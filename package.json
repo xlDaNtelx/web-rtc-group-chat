@@ -1,0 +1,15 @@
+{
+  "name": "web-rtc-group-chat",
+  "version": "",
+  "description": "About =====",
+  "scripts": {
+    "start": "nodemon --watch signaling-server.js --exec node signaling-server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.15.2",
+    "express": "^4.14.0",
+    "nodemon": "^2.0.2",
+    "socket.io": "^2.3.0"
+  },
+  "type": "module"
+}
