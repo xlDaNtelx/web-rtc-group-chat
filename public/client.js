@@ -6,11 +6,25 @@ const ROOT_ELEMENT = document.querySelector('#root');
 const { RTCPeerConnection, RTCSessionDescription } = window;
 const isAlreadyCalling = true;
 
-var ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302'] }];
+// var ICE_SERVERS = [{}];
+
+
+let peers = {};
 
 const PEER_CONNECTION = new RTCPeerConnection(
-  { iceServers: ICE_SERVERS },
-  { optional: [{ DtlsSrtpKeyAgreement: true }] }
+  {
+    iceServers: [
+      {
+        urls: 'turn:numb.viagenie.ca',
+        credential: 'muazkh',
+        username: 'webrtc@live.com'
+      },
+      {
+        urls: "stun:stun.l.google.com:19302"
+      }
+    ]
+  },
+  // { optional: [{ DtlsSrtpKeyAgreement: true }] }s
 );
 
 let users = [];
@@ -61,10 +75,6 @@ SOCKET.on('answer-made', async (data) => {
     console.log(error);
   }
 
-  if (!isAlreadyCalling) {
-    callUser(data.socket);
-    isAlreadyCalling = true;
-  }
 });
 
 SOCKET.on('send-user-list', (data) => {
@@ -79,3 +89,16 @@ PEER_CONNECTION.ontrack = ({ streams: [stream] }) => {
 
   ROOT_ELEMENT.appendChild(videoElement);
 };
+
+PEER_CONNECTION.onicecandidate = (event) => {
+  console.log('candidate');
+  if (event.candidate) {
+    SOCKET.emit('iceCandidate', event.candidate);
+  }
+}
+
+SOCKET.on('iceCandidate', function (config) {
+  var peer = peers[config.peer_id];
+  var ice_candidate = config.ice_candidate;
+  PEER_CONNECTION.addIceCandidate(new RTCIceCandidate(ice_candidate))
+});

@@ -17,11 +17,11 @@ const serverIO = io.listen(server);
 
 app.use(express.static(path.resolve('./public')));
 
-server.listen(PORT, null, function() {
+server.listen(PORT, null, function () {
   console.log('Listening on port ' + PORT);
 });
 
-app.get('/', function(req, res) {
+app.get('/', function (req, res) {
   res.sendFile(path.resolve(path.dirname('')) + '/public/client.html');
 });
 
@@ -36,19 +36,22 @@ serverIO.sockets.on('connection', (socket) => {
   socket.channels = {};
   sockets[socket.id] = socket;
 
-  socket.on('disconnect', () => console.log('Hey, i am disconnected'));
+  socket.on('disconnect', () => delete sockets[socket.id]);
 
   socket.emit('send-user-list', {
     users: Object.keys(sockets)
   });
 
-  socket.on('call-user', (data) => {
-    const socketsArr = Object.keys(sockets);
+  const socketsArr = Object.keys(sockets);
+  console.log(socketsArr);
 
-    socket.to(data.to).emit('call-made', {
-      offer: data.offer,
-      socket: data.to
-    });
+  socket.on('call-user', (data) => {
+    if (data.to) {
+      socket.to(data.to).emit('call-made', {
+        offer: data.offer,
+        socket: socket.id
+      });
+    }
   });
 
   socket.on('make-answer', (data) => {
@@ -58,3 +61,4 @@ serverIO.sockets.on('connection', (socket) => {
     });
   });
 });
+
