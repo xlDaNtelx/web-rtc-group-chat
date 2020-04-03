@@ -8,26 +8,21 @@ const isAlreadyCalling = true;
 
 // var ICE_SERVERS = [{}];
 
-
 let peers = {};
-
-const PEER_CONNECTION = new RTCPeerConnection(
-  {
-    iceServers: [
-      {
-        urls: 'turn:numb.viagenie.ca',
-        credential: 'muazkh',
-        username: 'webrtc@live.com'
-      },
-      {
-        urls: "stun:stun.l.google.com:19302"
-      }
-    ]
-  },
-  // { optional: [{ DtlsSrtpKeyAgreement: true }] }s
-);
-
 let users = [];
+
+const PEER_CONNECTION = new RTCPeerConnection({
+  iceServers: [
+    {
+      urls: 'turn:numb.viagenie.ca',
+      credential: 'muazkh',
+      username: 'webrtc@live.com'
+    },
+    {
+      urls: 'stun:stun.l.google.com:19302'
+    }
+  ]
+});
 
 navigator.mediaDevices.getUserMedia(CONSTRAINTS).then(async (stream) => {
   const videoElement = document.createElement('video');
@@ -45,7 +40,7 @@ navigator.mediaDevices.getUserMedia(CONSTRAINTS).then(async (stream) => {
 
   SOCKET.emit('call-user', {
     offer,
-    to: users.filter((user) => user !== SOCKET.id)
+    to: users.find((user) => user !== SOCKET.id)
   });
 
   ROOT_ELEMENT.appendChild(videoElement);
@@ -62,7 +57,7 @@ SOCKET.on('call-made', async (data) => {
 
   SOCKET.emit('make-answer', {
     answer,
-    to: users.filter((user) => user !== SOCKET.id)
+    to: users.find((user) => user !== SOCKET.id)
   });
 });
 
@@ -74,7 +69,6 @@ SOCKET.on('answer-made', async (data) => {
   } catch (error) {
     console.log(error);
   }
-
 });
 
 SOCKET.on('send-user-list', (data) => {
@@ -87,18 +81,29 @@ PEER_CONNECTION.ontrack = ({ streams: [stream] }) => {
   videoElement.setAttribute('autoplay', '');
   videoElement.srcObject = stream;
 
+  console.log('here we go again stream', stream);
+
   ROOT_ELEMENT.appendChild(videoElement);
 };
 
 PEER_CONNECTION.onicecandidate = (event) => {
   console.log('candidate');
   if (event.candidate) {
-    SOCKET.emit('iceCandidate', event.candidate);
+    console.log('here is new candidate');
+    SOCKET.emit('addCandidate', {
+      ice_candidate: {
+        sdpMLineIndex: event.candidate.sdpMLineIndex,
+        candidate: event.candidate.candidate
+      }
+    });
   }
-}
+};
 
-SOCKET.on('iceCandidate', function (config) {
-  var peer = peers[config.peer_id];
+SOCKET.on('iceCandidate', function(config) {
+  // var peer = peers[config.peer_id];
   var ice_candidate = config.ice_candidate;
-  PEER_CONNECTION.addIceCandidate(new RTCIceCandidate(ice_candidate))
+  console.log('here we go again', ice_candidate);
+  PEER_CONNECTION.addIceCandidate(new RTCIceCandidate(ice_candidate));
+  console.log('here we go again getSenders', PEER_CONNECTION.getSenders());
+  console.log('here we go again getReceivers', PEER_CONNECTION.getReceivers());
 });

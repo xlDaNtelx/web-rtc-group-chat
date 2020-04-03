@@ -17,11 +17,11 @@ const serverIO = io.listen(server);
 
 app.use(express.static(path.resolve('./public')));
 
-server.listen(PORT, null, function () {
+server.listen(PORT, null, function() {
   console.log('Listening on port ' + PORT);
 });
 
-app.get('/', function (req, res) {
+app.get('/', function(req, res) {
   res.sendFile(path.resolve(path.dirname('')) + '/public/client.html');
 });
 
@@ -44,8 +44,10 @@ serverIO.sockets.on('connection', (socket) => {
 
   const socketsArr = Object.keys(sockets);
   console.log(socketsArr);
+  // console.log(sockets);
 
   socket.on('call-user', (data) => {
+    console.log('dataTO', data.to);
     if (data.to) {
       socket.to(data.to).emit('call-made', {
         offer: data.offer,
@@ -60,5 +62,21 @@ serverIO.sockets.on('connection', (socket) => {
       answer: data.answer
     });
   });
-});
 
+  socket.on('addCandidate', function(config) {
+    // var peer_id = config.peer_id;
+    var ice_candidate = config.ice_candidate;
+    // console.log('here we go again', ice_candidate);
+    // console.log(
+    //   // '[' + socket.id + '] relaying ICE candidate to [' + peer_id + '] ',
+    //   ice_candidate
+    // );
+
+    // if (peer_id in sockets) {
+    sockets[socketsArr[0]].emit('iceCandidate', {
+      // peer_id: socket.id,
+      ice_candidate: ice_candidate
+    });
+    // }
+  });
+});
