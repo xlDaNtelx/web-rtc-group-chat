@@ -10,7 +10,7 @@ const isAlreadyCalling = true;
 let peers = {};
 let users = [];
 let userId = null;
-const CONSTRAINTS = users.length > 1 ? { audio: true, video: true } : { audio: false, video: true };
+const CONSTRAINTS = { audio: true, video: true };
 
 let streams = [];
 
@@ -27,7 +27,6 @@ const PEER_CONNECTION = new RTCPeerConnection({
   ]
 });
 
-
 navigator.mediaDevices.getUserMedia(CONSTRAINTS).then(async (stream) => {
   const videoElement = document.createElement('video');
   videoElement.setAttribute('autoplay', '');
@@ -38,19 +37,14 @@ navigator.mediaDevices.getUserMedia(CONSTRAINTS).then(async (stream) => {
   ROOT_ELEMENT.appendChild(videoElement);
   PEER_CONNECTION.addTrack(videoTracks[0], stream);
 
-  console.log(users, userId);
-
-
   PEER_CONNECTION.ontrack = ({ streams: [stream] }) => {
     const videoElement = document.createElement('video');
     videoElement.setAttribute('autoplay', '');
-    console.log(PEER_CONNECTION.getReceivers(), 'receivers');
     videoElement.srcObject = stream;
     ROOT_ELEMENT.appendChild(videoElement);
   };
 
   PEER_CONNECTION.onicecandidate = (event) => {
-    console.log('candidate');
     if (event.candidate && event.candidate.candidate) {
       SOCKET.emit('addCandidate', {
         ice_candidate: {
@@ -61,59 +55,41 @@ navigator.mediaDevices.getUserMedia(CONSTRAINTS).then(async (stream) => {
     }
   };
 
-  if (userId === 2) {
+  SOCKET.emit('join', {});
+});
+
+SOCKET.on('add-connection', async (peerData) => {
+  if (peerData.should_create_offer) {
     const offer = await PEER_CONNECTION.createOffer();
     await PEER_CONNECTION.setLocalDescription(offer);
-    console.log('done');
-
-    SOCKET.emit('call', {
-      offer,
-      to: users.find((user) => user !== SOCKET.id)
-    })
-  }
-});
-
-SOCKET.on('call-done', async (data) => {
-  if (userId === 1) {
-    console.log('fff');
-
-    await PEER_CONNECTION.setRemoteDescription(
-      new RTCSessionDescription(data.offer)
-    );
-    const answer = await PEER_CONNECTION.createAnswer();
-    await PEER_CONNECTION.setLocalDescription(answer);
-    SOCKET.emit('answer', {
-      answer,
-      to: users.find((user) => user !== SOCKET.id)
+    SOCKET.emit('relaySessionDescription', {
+      peer_id: peerData.peer_id,
+      session_description: offer
     });
+  } else {
+    await PEER_CONNECTION.setRemoteDescription(
+      new RTCSessionDescription(data.answer)
+    );
   }
 });
 
+SOCKET.on('recieve-connection', async (peerData) => {
+  await PEER_CONNECTION.setRemoteDescription(
+    new RTCSessionDescription(peerData.session_description)
+  );
 
-SOCKET.on('answer-done', async (data) => {
-  if (userId === 2) {
-    console.log('sparda');
+  const answer = await PEER_CONNECTION.createAnswer();
+  await PEER_CONNECTION.setLocalDescription(answer);
 
-    try {
-      await PEER_CONNECTION.setRemoteDescription(
-        new RTCSessionDescription(data.answer)
-      );
-    } catch (error) {
-      console.log(error);
-    }
-  }
+  SOCKET.emit('answer-connection', {
+    answer,
+    peerId: SOCKET.id
+  });
 });
 
-SOCKET.on('identify-user', (data) => {
-  users = data.users;
-  userId = data.userId || userId;
-});
-
-
-SOCKET.on('iceCandidate', async function (config) {
+SOCKET.on('iceCandidate', async function(config) {
   // var peer = peers[config.peer_id];
   var ice_candidate = config.ice_candidate;
-  console.log(PEER_CONNECTION.getReceivers());
 
   await PEER_CONNECTION.addIceCandidate(new RTCIceCandidate(ice_candidate));
 });

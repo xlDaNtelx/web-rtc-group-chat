@@ -17,11 +17,11 @@ const serverIO = io.listen(server);
 
 app.use(express.static(path.resolve('./public')));
 
-server.listen(PORT, null, function () {
+server.listen(PORT, null, function() {
   console.log('Listening on port ' + PORT);
 });
 
-app.get('/', function (req, res) {
+app.get('/', function(req, res) {
   res.sendFile(path.resolve(path.dirname('')) + '/public/client.html');
 });
 
@@ -33,42 +33,40 @@ const channels = {};
 const sockets = {};
 
 serverIO.sockets.on('connection', (socket) => {
-  socket.channels = {};
   sockets[socket.id] = socket;
 
   socket.on('disconnect', () => delete sockets[socket.id]);
 
-  socket.emit('identify-user', {
-    users: Object.keys(sockets),
-    userId: Object.keys(sockets).length > 1 ? 2 : 1
+  const socketsArr = Object.keys(sockets);
+
+  socket.on('join', function(config) {
+    socket.broadcast.emit('add-connection', {
+      peer_id: socket.id,
+      should_create_offer: true
+    });
   });
 
-  const socketsArr = Object.keys(sockets);
   console.log(socketsArr);
 
-  socket.on('call', (data) => {
-
-    socket.broadcast.emit('identify-user', {
-      users: Object.keys(sockets)
-    });
-
-    socket.to(data.to).emit('call-done', {
-      offer: data.offer,
-      socket: socket.id
-    });
-  });
-
-  socket.on('answer', (data) => {
-    socket.to(data.to).emit('answer-done', {
-      socket: socket.id,
-      answer: data.answer
-    });
-  });
-
-  socket.on('addCandidate', function (config) {
+  socket.on('addCandidate', function(config) {
     var ice_candidate = config.ice_candidate;
-    sockets[socketsArr.find((item) => item !== socket.id)].emit('iceCandidate', {
-      ice_candidate: ice_candidate
+    socket.broadcast.emit('iceCandidate', { ice_candidate });
+  });
+
+  socket.on('relaySessionDescription', function(config) {
+    var peer_id = config.peer_id;
+    var session_description = config.session_description;
+    // I want to tell that socket that was added that I want to give him my local description
+    sockets[peer_id].emit('recieve-connection', {
+      peer_id: socket.id,
+      session_description: session_description
+    });
+  });
+
+  socket.on('answer-connection', (data) => {
+    socket.broadcast.emit('add-conection', {
+      answer: data.answer,
+      should_create_offer: false
     });
   });
 });
