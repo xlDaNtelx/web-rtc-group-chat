@@ -17,11 +17,11 @@ const serverIO = io.listen(server);
 
 app.use(express.static(path.resolve('./public')));
 
-server.listen(PORT, null, function () {
+server.listen(PORT, null, function() {
   console.log('Listening on port ' + PORT);
 });
 
-app.get('/', function (req, res) {
+app.get('/', function(req, res) {
   res.sendFile(path.resolve(path.dirname('')) + '/public/client.html');
 });
 
@@ -47,7 +47,6 @@ serverIO.sockets.on('connection', (socket) => {
   console.log(socketsArr);
 
   socket.on('call', (data) => {
-
     socket.broadcast.emit('identify-user', {
       users: Object.keys(sockets)
     });
@@ -65,9 +64,9 @@ serverIO.sockets.on('connection', (socket) => {
     });
   });
 
-  socket.on('addCandidate', function (config) {
+  socket.on('addCandidate', function(config) {
     var ice_candidate = config.ice_candidate;
-    sockets[socketsArr.find((item) => item !== socket.id)].emit('iceCandidate', {
+    socket.broadcast.emit('iceCandidate', {
       ice_candidate: ice_candidate
     });
   });
